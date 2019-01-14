@@ -63,16 +63,7 @@ void loop() {
   relogio(0);
   mostraHora();
   if (efeitoMsgCampo == 0) {rotina_brilho(); indexChr = 0; vez = 0; efeitoMsgCampo = 1;}
-  else if (efeitoMsgCampo == 1) {
-    dtostrf(sensor_bme.readTemperature(), 3, 1, frase);
-    frase[4] = 247;
-    frase[5] = 'C';
-    frase[6] = ' ';
-    frase[7] = ' ';
-    frase[8] = ' ';
-    frase[9] = 0;
-    efeitoMsgCampo++;
-  }
+  else if (efeitoMsgCampo == 1) buscaTemperatura(frase);
   else if (efeitoMsgCampo == 2) msgCampo(frase);
   else if (efeitoMsgCampo == 3) desliza(0);
   else if (efeitoMsgCampo == 4) {
@@ -120,6 +111,79 @@ void loop() {
       else ovni();
     }
 }
+
+char *buscaTemperatura(char *psz){
+static  bool jaFoi = false;
+int16_t soma = 0;               ////////////////////////////////
+float temperatura = 0;
+static float tempAnterior = 0;  //////////////////////////////////////////////////////////
+static uint8_t i = 0;              /////////////////////////////////////////
+static int8_t mediaTemp[30];
+uint8_t frase[13], posicao = 0;
+uint8_t fraseTemp[4];
+
+temperatura = sensor_bme.readTemperature();
+
+if (!jaFoi && minuto % 2 == 0){
+  jaFoi = !jaFoi;
+  if (tempAnterior != 0) mediaTemp[i] = 100 * (temperatura - tempAnterior);
+  if (i == 29) i = 0; else i++;
+  tempAnterior = temperatura;
+}
+else if (minuto % 2 != 0) jaFoi = false;
+
+for (byte i = 0; i < 30; i++) soma += mediaTemp[i];
+
+if      (soma > 150) {
+  frase[0] = 24;
+  frase[1] = 24;
+  frase[2] = 24;
+  posicao = 3;
+}
+else if (soma > 100) {
+  frase[0] = 24;
+  frase[1] = 24;
+  posicao = 2;
+}
+else if (soma > 50) {
+  frase[0] = 24;
+  posicao = 1;
+}
+else if (soma < -50) {
+  frase[0] = 25;
+  posicao = 1;
+}
+else if (soma < -100) {
+  frase[0] = 25;
+  frase[1] = 25;
+  posicao = 1;
+}
+else if (soma < -150) {
+  frase[0] = 25;
+  frase[1] = 25;
+  frase[2] = 25;
+  posicao = 3;
+}
+
+dtostrf(temperatura, 3, 1, fraseTemp);
+
+frase[posicao] = fraseTemp[0];
+frase[posicao + 1] = fraseTemp[1];
+frase[posicao + 2] = fraseTemp[2];
+frase[posicao + 3] = fraseTemp[3];
+frase[posicao + 4] = 247;
+frase[posicao + 5] = 'C';
+frase[posicao + 6] = ' ';
+frase[posicao + 7] = ' ';
+frase[posicao + 8] = ' ';
+frase[posicao + 9] = 0;
+efeitoMsgCampo++;
+
+strncpy(psz, frase, 13);
+
+return (psz);
+}
+
 
 void ovni(){
 int8_t brilhOvni = 0;
